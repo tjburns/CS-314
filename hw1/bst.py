@@ -49,7 +49,10 @@ def main():
     i = 0
     #do file input for tree insertion and query
     while (True):
-        line = input().split()
+        try:
+            line = input().split()
+        except EOFError:
+            exit(0)
         if line[0] == "i":
             insert(treeRoot, Node(int(line[1])))
             if treeRoot is None:

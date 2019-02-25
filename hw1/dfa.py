@@ -86,7 +86,10 @@ for i in range(len(line)-1):
 testAutomaton = dfa(states, symbols, tr, start, final)
 
 while(True):
-    line = input()
+    try:
+        line = input()
+    except EOFError:
+        exit(0)
     if testAutomaton.run_with_input_list(line):
         print("accepted")
     else:

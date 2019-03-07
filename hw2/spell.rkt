@@ -23,6 +23,7 @@
         (append (map (car hashlist) dict) (createbitvector (cdr hashlist) dict))
 )))
 
+#|
 (define checkword
   (lambda (bitvector wordhashes)
     ;(display wordhashes)
@@ -33,17 +34,18 @@
     ;(display wordhash)
     (cond ((member wordhash bitvector) '#t) (else '#f))
 ))
+|#
 
 (define check?
   (lambda (wordhashes bitvector)
-    (display wordhashes)
+    ;(display wordhashes)
     (if (null? (cdr wordhashes))
         (check2? (car wordhashes) bitvector)
         (and (check2? (car wordhashes) bitvector) (check? (cdr wordhashes) bitvector)))
 ))
 (define check2?
   (lambda (wordhash bitvector)
-    ;(display wordhash)
+    ;(display wordhash) // this prints the word hash being searched for on EVERY iteration of the loop through the bitvector
     (if (null? (cdr bitvector))
         (= wordhash (car bitvector))
         (or (= wordhash (car bitvector)) (check2? wordhash (cdr bitvector))))
@@ -56,8 +58,8 @@
   (lambda (word)
     (if (null? word)
         5413
-        (+ (ctv (car word)) (* 29 (key (cdr word))))
-        ;(reduce (* 29) word (5413))
+        ;(+ (ctv (car word)) (* 29 (key (cdr word))))
+        (reduce + (list (ctv (car word))) (* 29 (key (cdr word))))
 )))
 
 ;; -----------------------------------------------------

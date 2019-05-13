@@ -1,38 +1,86 @@
-# ------------------------------------
-# PLEASE BE CAREFUL WITH THIS FILE 
-# 	I included my api key and this code to show my process
-#	this code does not need to be run as I have already collected and stored the data from the api requests shown
-# Feel free to look at the data and play around with it and do things I haven't just don't mess with this file
-# ------------------------------------
-
 import json
-import time
-import requests
+import collections
+import operator
 
-input_file = open('my_matches.json')
-matches = json.load(input_file)
-input_file.close()
+class Match:
+    def __init__(self, match, radiant_win):
+        self.match = match
+        self.radiant_win = radiant_win
+        self.hero_picks = []
 
-print('loading {} matches\n'.format(len(matches)))
 
-f = open('pob_match_data.txt', 'w')
-i = 0
-for m in matches:
-	print('requesting {}-th match. id: {}'.format(i, m['match_id']))
-	
-	# PLEASE DON'T UNCOMMENT AND RUN THIS - THE DATA IS ALREADY STORED IN THE TXT FILE IN THE SUBMISSION
-	# i might delete the key upon submission so if you REALLY want to run this file comment out the current api call and uncomment the following line (api call without my api key) and uncomment the sleep line (because there is a rate limit - both per second and total calls cap)
-	# API CALLS TO THIS KEY CHARGE ME so pls (again i might delete so i won't have to worry xd - but i kinda want to work on this more over the summer so probs not)
-	r = requests.get('https://api.opendota.com/api/matches/{}?api_key=0510a91f-c1f5-49ec-9ff8-07f087283ad1'.format(m['match_id']))
-	#r = requests.get('https://api.opendota.com/api/matches/{}'.format(m['match_id']))
-	
-	#print(type(r))
-	# default write encodes to ascii and there are multiple unicode characters present in the data - sucks because it makes the file of data much larger (maybe there's some smart way to deal with this)
-	f.write((r.text).encode('utf-8'))
-	f.write('\n')
-	print(r.text)
-	#time.sleep(5)
-	i += 1
-	
-print('processed {} matches'.format(i))
-f.close()
+names = {}
+with open('heroes.json') as file:
+    data = json.load(file)
+    for hero in data:
+        names[hero['id']] = hero['localized_name']
+
+
+def process_match(match):
+
+    radiant_win = match['radiant_win']
+
+    m = Match(match['match_id'], radiant_win)
+
+    for pb in match['picks_bans']:
+        if pb['is_pick']:
+            m.hero_picks.append(names[pb['hero_id']])
+
+    return m
+
+
+with open('pob_match_data.txt', 'r', errors='replace') as file:
+    matches = file.readlines()
+
+processed = 0
+errors = 0
+processed_matches = []
+for match in matches:
+    match = json.loads(match)
+
+    try:
+        processed_matches.append(process_match(match))
+        processed += 1
+    except Exception as e:
+        errors += 1
+        #print("Error processing match. error {}\n".format(e))
+
+print("Processed {} matches. Errors: {}".format(processed, errors))
+
+print("\n\nPOBBISH MATCH STATISTICS\n")
+
+won_matches = list(filter(lambda m : m.radiant_win, processed_matches))
+print('Radiant won {} of the {} games.'.format(len(won_matches), len(processed_matches)))
+print('\tOverall Winrate: {0:.2f}'.format(float(len(won_matches)/len(processed_matches) * 100)))
+
+print("\nA few of my most played heroes:")
+spec_matches = list(filter(lambda m : 'Spectre' in m.hero_picks, processed_matches))
+print('Found {} games where Spectre was picked.'.format(len(spec_matches)))
+
+drow_matches = list(filter(lambda m : 'Drow Ranger' in m.hero_picks, processed_matches))
+print('Found {} games where Pob\'s team picked Drow Ranger.'.format(len(drow_matches)))
+
+pa_matches = list(filter(lambda m : 'Phantom Assassin' in m.hero_picks, processed_matches))
+print('Found {} games where Pob\'s team picked Phantom Assassin.'.format(len(pa_matches)))
+
+print("\n\nTOTAL HERO STATS IN POBBISH'S MATCHES\n")
+
+#hero_wins = collections.defaultdict(int)
+hero_totals = collections.defaultdict(int)
+hero_matches = collections.defaultdict(list)
+for m in processed_matches:
+    for hero in m.hero_picks:
+        hero_totals[hero] += 1
+        #if not match.pob_win:
+            #hero_wins[hero] += 1
+        hero_matches[hero].append(m.match)
+
+#win_percent = collections.defaultdict(float)
+#for k, v in hero_matches.items():
+    #win_percent[k] = (v/hero_totals[k])
+
+sorted_picks = collections.OrderedDict(sorted(hero_totals.items(), key=operator.itemgetter(1), reverse=True))
+
+for k, v in sorted_picks.items():
+    print("{} has been picked {} out of {} games in Pobbish's matches.".format(k, hero_totals[k], len(processed_matches)))
+    print("\tOverall pick rate: {0:.2f}%".format(float(hero_totals[k]/len(processed_matches) * 100)))
